@@ -56,6 +56,62 @@ src/test/java/spring/checklisit/
                 └── ChecklistResourceIntegrationTest.java
 ```
 
+### Domain Class Diagram
+
+```mermaid
+classDiagram
+    class ChecklistItem {
+        <<Document>>
+        -String id
+        -String label
+        -Category category
+        -int order
+        -Status status
+        -boolean complete
+    }
+
+    class UserChecklist {
+        <<Document>>
+        -String id
+        -LocalDate date
+        -List~UserChecklistItem~ items
+    }
+
+    class UserChecklistItem {
+        -String itemId
+        -String label
+        -Category category
+        -int order
+        -boolean complete
+    }
+
+    class Status {
+        <<enumeration>>
+        ACTIVE
+        INACTIVE
+    }
+
+    class Category {
+        <<enumeration>>
+        MORNING
+        AFTERNOON
+        NIGHT
+        -String text
+    }
+
+    ChecklistItem --> Category
+    ChecklistItem --> Status
+    UserChecklist *-- "0..*" UserChecklistItem : items
+    UserChecklistItem --> Category
+    UserChecklistItem ..> ChecklistItem : itemId references
+```
+
+**Relationships:**
+- `ChecklistItem` is the master template stored in `checklist_items` collection
+- `UserChecklist` is a daily snapshot stored in `user_checklists` collection, containing embedded `UserChecklistItem` entries
+- `UserChecklistItem` copies fields from `ChecklistItem` and tracks completion state per day
+- `itemId` in `UserChecklistItem` references the original `ChecklistItem.id`
+
 ### API Endpoints
 
 | Method | Endpoint                       | Description                    |
