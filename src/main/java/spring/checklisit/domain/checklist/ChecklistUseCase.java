@@ -5,6 +5,8 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -27,6 +29,17 @@ public class ChecklistUseCase {
             checklistPort.findItemById(item.getId())
                     .orElseThrow(() -> new ResourceNotFoundException("ChecklistItem not found with id: " + item.getId()));
         });
+
+        // Sync: delete items not in the update request
+        Set<String> updateIds = items.stream()
+                .map(ChecklistItem::getId)
+                .collect(Collectors.toSet());
+
+        checklistPort.findAllItems().stream()
+                .map(ChecklistItem::getId)
+                .filter(id -> !updateIds.contains(id))
+                .forEach(checklistPort::deleteItemById);
+
         return checklistPort.saveAllItems(items);
     }
 

@@ -222,4 +222,62 @@ class ChecklistResourceIntegrationTest {
                 .bodyJson()
                 .extractingPath("$.items[0].complete").isEqualTo(true);
     }
+
+    @Test
+    void updateItems_shouldDeleteOmittedItems() {
+        // Given: 4 checklist items exist
+        ChecklistItem task1 = mongoTemplate.save(ChecklistItem.builder()
+                .label("Task 1")
+                .category(Category.MORNING)
+                .order(1)
+                .status(Status.ACTIVE)
+                .complete(false)
+                .build());
+        ChecklistItem task2 = mongoTemplate.save(ChecklistItem.builder()
+                .label("Task 2")
+                .category(Category.AFTERNOON)
+                .order(2)
+                .status(Status.ACTIVE)
+                .complete(false)
+                .build());
+        ChecklistItem task3 = mongoTemplate.save(ChecklistItem.builder()
+                .label("Task 3")
+                .category(Category.NIGHT)
+                .order(3)
+                .status(Status.ACTIVE)
+                .complete(false)
+                .build());
+        ChecklistItem task4 = mongoTemplate.save(ChecklistItem.builder()
+                .label("Task 4")
+                .category(Category.MORNING)
+                .order(4)
+                .status(Status.ACTIVE)
+                .complete(false)
+                .build());
+
+        // When: update with only 3 items (omitting task 4)
+        String requestBody = """
+                [
+                    {"id": "%s", "label": "Task 1 Updated", "category": "MORNING", "order": 1, "status": "ACTIVE", "complete": false},
+                    {"id": "%s", "label": "Task 2", "category": "AFTERNOON", "order": 2, "status": "ACTIVE", "complete": false},
+                    {"id": "%s", "label": "Task 3", "category": "NIGHT", "order": 3, "status": "ACTIVE", "complete": false}
+                ]
+                """.formatted(task1.getId(), task2.getId(), task3.getId());
+
+        assertThat(mockMvc.put().uri("/checklist/items")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+                .hasStatusOk()
+                .bodyJson()
+                .extractingPath("$.length()").isEqualTo(3);
+
+        // Then: task 4 should be deleted from the database
+        assertThat(mongoTemplate.findById(task4.getId(), ChecklistItem.class)).isNull();
+
+        // And: only 3 items should remain in the database
+        assertThat(mockMvc.get().uri("/checklist/items"))
+                .hasStatusOk()
+                .bodyJson()
+                .extractingPath("$.length()").isEqualTo(3);
+    }
 }
