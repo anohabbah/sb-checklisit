@@ -1,3 +1,6 @@
 spring:
   application:
     name: checklisit
+  mvc:
+    problemdetails:
+      enabled: true
