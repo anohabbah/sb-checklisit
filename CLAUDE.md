@@ -22,14 +22,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 # Clean build
 ./gradlew clean build
-
-# Package as executable JAR
-./gradlew bootJar
 ```
 
 ## Local Development
 
-Run the application with automatically starts MongoDB container using spring-boot-docker-compose:
+Run the application which automatically starts MongoDB container using spring-boot-docker-compose:
 ```bash
 ./gradlew bootRun
 ```
@@ -38,31 +35,48 @@ The application can also be run via `TestChecklisitApplication` which automatica
 
 ## Architecture
 
-- **Framework**: Spring Boot 4.0.2 with Spring Cloud
+- **Framework**: Spring Boot 4.0.2
 - **Database**: MongoDB (via `spring-boot-starter-data-mongodb`)
 - **Java Version**: 21 (enforced via toolchain)
 - **Build System**: Gradle 9.3.0
 
-### Package Structure
+### Hexagonal Architecture
 
-Base package: `spring.checklisit`.
-Use Hexagonal Architecture structure:
+Base package: `spring.checklisit`
 
 ```
 src/main/java/spring/checklisit/
 ├── domain/
-│   └── <domian_name>/
+│   └── <domain_name>/
+│       ├── <Entity>.java           # Domain entities
+│       ├── <UseCase>.java          # Business logic (@Service)
+│       ├── <Port>.java             # Port interface (driven)
+│       └── <Exception>.java        # Domain exceptions
 └── infra/
     ├── spi/
     │   └── db/
-    │       └── <domian_name>/
+    │       └── <domain_name>/
+    │           └── <Adapter>.java  # Database adapter implements Port
     └── api/
         └── rest/
-            └── <domian_name>/
+            ├── config/             # Cross-cutting REST config
+            └── <domain_name>/
+                ├── <Resource>.java # REST controller (driving adapter)
+                └── <Dto>.java      # Request/Response DTOs
 ```
 
-- `<domian_name>` in this structure should be the feature domain object class name in lowercase.
-- `infra/` sub package could be changed to reflect driving/driven port implementation technology
+- `<domain_name>` is the feature domain name in lowercase (e.g., `checklist`)
+- `domain/` contains pure business logic with no infrastructure dependencies
+- `infra/spi/` contains driven adapters (outbound: database, external services)
+- `infra/api/` contains driving adapters (inbound: REST, messaging)
+- DTOs use static `fromEntity()` and `toEntity()` methods for mapping
+
+### API Conventions
+
+- REST controllers use `@RestController` with `@Validated` for bean validation
+- Error responses follow RFC 7807 Problem Details (`spring.mvc.problemdetails.enabled=true`)
+- Custom exceptions extend domain-specific exceptions (e.g., `ResourceNotFoundException`)
+- `GlobalExceptionHandler` extends `ResponseEntityExceptionHandler` for custom problem details
 
 ### Testing Strategy
 
